@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, Check, Globe2, Landmark, ShieldCheck, Wallet } from 'lucide-react';
 import { usePollar } from '@pollar/react';
 import type { SendPaymentParams } from '@pollar/core';
+import { canSignX402, createNiriumAdapter, createPollarSigner } from 'nirium-pollar-adapter';
 import type { LocalRoute, LocalRouteStatus, RoutePurpose } from '../shared/localRoutes';
 import './localRoutes.css';
 import './routePayment.css';
@@ -14,7 +15,7 @@ const sandboxOwner = () => { const key = 'vesrune-sandbox-owner'; const existing
 async function api<T>(path: string, init?: RequestInit): Promise<T> { const base = apiBase(); if (!base) throw new Error('Backend URL is not configured. Preview mode remains available locally.'); const response = await fetch(`${base}${path}`, { ...init, credentials: 'include', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Sandbox-Owner': sandboxOwner(), ...(init?.headers || {}) } }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body?.error?.message || `Backend request failed (${response.status}).`); return body as T; }
 
 function LiveRoutePayment({ route, busy, onBusy, onError, onVerified }: { route: LocalRoute; busy: boolean; onBusy: (value: boolean) => void; onError: (message: string) => void; onVerified: (hash: string) => Promise<void> }) {
-  const { sendPayment, walletBalance } = usePollar();
+  const { sendPayment, walletBalance, getClient, isAuthenticated, verified } = usePollar();
   const [hash, setHash] = useState('');
   const [phase, setPhase] = useState<'ready' | 'signing' | 'verifying' | 'waiting'>('ready');
   const [destinationTrustline, setDestinationTrustline] = useState<'loading' | 'ready' | 'missing'>('loading');
@@ -63,6 +64,36 @@ function LiveRoutePayment({ route, busy, onBusy, onError, onVerified }: { route:
     {phase === 'waiting' && <p className="fineprint">The hash was captured, but Horizon has not returned final settlement yet. Retry verification without sending a second payment.</p>}
     <div className="action-row"><button className="button primary" disabled={busy || !canSend} onClick={send}>{phase === 'verifying' ? 'Verifying…' : 'Send USDC'}</button>{phase === 'waiting' && <button className="button secondary" disabled={busy} onClick={()=>void retryVerification()}>Retry verification</button>}</div>
     {sendDialogOpen && <div className="route-send-overlay" role="dialog" aria-modal="true" aria-labelledby="route-send-title"><div className="route-send-dialog"><div className="section-head"><div><span className="hero-label">ROUTE PAYMENT</span><h2 id="route-send-title">Review testnet transfer</h2></div><button className="icon-button" disabled={busy} aria-label="Close send dialog" onClick={()=>setSendDialogOpen(false)}>×</button></div><p className="fineprint">These route values are locked by the approved quote. Review them, then click Send USDC to open the Pollar signing flow.</p><label htmlFor="route-send-amount">Amount</label><input id="route-send-amount" value={`${route.quote.destinationAmount} USDC`} readOnly/><label htmlFor="route-send-destination">Recipient</label><input id="route-send-destination" className="mono" value={destination} readOnly/><label htmlFor="route-send-asset">Asset issuer</label><input id="route-send-asset" className="mono" value={issuer} readOnly/><div className="notice"><ShieldCheck size={18}/><span>This is a real Stellar testnet transfer. Pollar will ask you to authorize the transaction.</span></div><div className="action-row"><button className="button secondary" disabled={busy} onClick={()=>setSendDialogOpen(false)}>Cancel</button><button className="button primary" disabled={busy} onClick={()=>void confirmSend()}>{busy ? 'Waiting for authorization…' : 'Send USDC'}</button></div></div></div>}
+  </div>;
+}
+
+function RouteAgentPayment({ busy, onBusy, onError }: { busy: boolean; onBusy: (value: boolean) => void; onError: (message: string) => void }) {
+  const { getClient, isAuthenticated, verified } = usePollar();
+  const [status, setStatus] = useState<'ready' | 'paying' | 'paid' | 'error'>('ready');
+  const [receipt, setReceipt] = useState('');
+
+  async function payAgent() {
+    if (!isAuthenticated || !verified) { onError('Sign in to Pollar before paying the route agent.'); return; }
+    const pollar = getClient();
+    if (!canSignX402(pollar)) { onError('This Pollar session cannot sign x402 authorization entries yet. Reconnect the wallet and try again.'); return; }
+    onBusy(true); onError(''); setStatus('paying');
+    try {
+      const nirium = createNiriumAdapter({ signer: createPollarSigner(pollar), network: 'stellar:testnet' });
+      const response = await nirium.getPremiumMarket();
+      const body = JSON.stringify(response).slice(0, 240);
+      setReceipt(`HTTP ${response ? '200' : 'completed'} · ${body}`);
+      setStatus('paid');
+    } catch (e) {
+      setStatus('error');
+      onError((e as Error).message || 'The x402 route-agent payment did not complete.');
+    } finally { onBusy(false); }
+  }
+
+  return <div className="lr-review route-agent-payment">
+    <div className="send-step-heading"><span className="send-step-number">02</span><div><h3>Pay the route agent with x402</h3><p>Vesrune can pay the route service in USDC through Pollar’s sponsored Stellar testnet flow. This is a service fee, not the principal settlement.</p></div></div>
+    <div className="notice"><ShieldCheck size={18}/><span>Uses the Nirium Pollar adapter: HTTP 402 → Pollar authorization → facilitator settlement → retry. No private key or XLM is exposed to Vesrune.</span></div>
+    {receipt && <p className="fineprint mono">Agent receipt: {receipt}</p>}
+    <div className="action-row"><button className="button secondary" disabled={busy || status === 'paid'} onClick={()=>void payAgent()}>{status === 'paying' ? 'Authorizing x402…' : status === 'paid' ? 'Agent paid' : status === 'error' ? 'Retry agent payment' : 'Pay route agent'}</button><span className="fineprint">Testnet only · principal proof remains separate</span></div>
   </div>;
 }
 
@@ -126,7 +157,7 @@ export function LocalRoutes() {
         <ol className="lr-timeline">{route.events.map((event,index)=><li key={index}><Check size={15}/><div><strong>{labels[event.status]}</strong><p>{event.note}</p></div></li>)}</ol>
         {route.status==='awaiting_funding' && <><p className="fineprint">In the sandbox, use this reference as evidence. There is no real receiving bank account. Do not upload bank statements or personal information.</p><button className="button primary full" disabled={busy} onClick={()=>void advance('under_review','Sandbox funding reference submitted; no funds confirmed.')}>{busy ? 'Submitting…' : 'Submit funding evidence'}</button><button className="button secondary full" disabled={busy} onClick={()=>void advance('cancelled','Rehearsal cancelled before funding.')}>Cancel rehearsal</button></>}
         {route.status==='under_review' && <div className="lr-review"><h3>Operator role · sandbox review</h3><p>Review the funding reference, then move the route to the testnet proof step.</p><div className="action-row"><button className="button primary" disabled={busy} onClick={()=>void reviewRoute('approve')}>Approve route</button><button className="button secondary" disabled={busy} onClick={()=>void reviewRoute('reject')}>Reject</button></div></div>}
-        {route.status==='awaiting_settlement' && <>{import.meta.env.VITE_POLLAR_API_KEY ? <LiveRoutePayment route={route} busy={busy} onBusy={setBusy} onError={setError} onVerified={verifyCapturedHash}/> : <form className="lr-proof-form" onSubmit={e=>{e.preventDefault();void submitSettlement();}}><div className="notice"><ShieldCheck size={18}/><span>Paste the transaction hash from a real Stellar testnet USDC transfer. Vesrune will look up the recipient, issuer, amount, network, and finality on Horizon before settlement.</span></div><label htmlFor="lr-hash">Stellar transaction hash</label><input id="lr-hash" value={proof.transactionHash} onChange={e=>setProof({transactionHash:e.target.value})} placeholder="Paste the testnet transaction hash" autoComplete="off" required/><p className="fineprint">The backend compares the payment to this route’s quoted {route.quote.destinationAmount} USDC and server-bound destination wallet. No client-supplied amount or recipient is trusted.</p><button className="button primary full" disabled={busy}>{busy ? 'Checking testnet proof…' : 'Verify testnet settlement'}</button></form>}</>}
+        {route.status==='awaiting_settlement' && <><RouteAgentPayment busy={busy} onBusy={setBusy} onError={setError}/>{import.meta.env.VITE_POLLAR_API_KEY ? <LiveRoutePayment route={route} busy={busy} onBusy={setBusy} onError={setError} onVerified={verifyCapturedHash}/> : <form className="lr-proof-form" onSubmit={e=>{e.preventDefault();void submitSettlement();}}><div className="notice"><ShieldCheck size={18}/><span>Paste the transaction hash from a real Stellar testnet USDC transfer. Vesrune will look up the recipient, issuer, amount, network, and finality on Horizon before settlement.</span></div><label htmlFor="lr-hash">Stellar transaction hash</label><input id="lr-hash" value={proof.transactionHash} onChange={e=>setProof({transactionHash:e.target.value})} placeholder="Paste the testnet transaction hash" autoComplete="off" required/><p className="fineprint">The backend compares the payment to this route’s quoted {route.quote.destinationAmount} USDC and server-bound destination wallet. No client-supplied amount or recipient is trusted.</p><button className="button primary full" disabled={busy}>{busy ? 'Checking testnet proof…' : 'Verify testnet settlement'}</button></form>}</>}
         {route.status==='settled' && <div className="lr-review"><h3>Testnet settlement verified</h3><p>The backend matched the confirmed payment. The final Bolivian payout remains a Pollar-side handoff simulated for this demo.</p><button className="button primary full" disabled={busy} onClick={()=>void simulatePayout()}>Simulate BOB payout</button></div>}
         {route.status==='payout_simulated' && <div className="notice"><Check size={18}/><span>BOB payout simulated. Pollar owns the Bolivian ramp; no BOB payment was sent by Vesrune.</span></div>}
       </>}

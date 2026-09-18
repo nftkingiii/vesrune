@@ -32,7 +32,8 @@ Scope: frontend preview and Luna backend handoff. Local checks, not live testnet
 ## Boundaries and remaining checks
 
 - No real wallet connection, signature, Pollar API call, real agent request, or onchain transaction occurred.
-- The Pollar SDK provider is initialized only; wallet login, account reads, yield actions, agent payments, and transaction reconciliation are not wired yet.
+- The Pollar SDK provider is initialized for Stellar testnet. The route screen now includes an optional x402 agent-service payment using `nirium-pollar-adapter`; it is separate from and does not replace backend verification of the principal settlement.
+- No successful x402 payment or principal settlement is claimed by this document until a signed-in browser run produces a facilitator response and the backend independently verifies the corresponding testnet proof.
 - Luna loads local configuration from `server/.env` without overriding process variables; live capability readiness remains fail-closed until Pollar verification, pool, asset, and wallet execution are independently configured and proven.
 - Only `/healthz` and `/readyz` are wired read-only. Authenticated workspace/task/operation routes are not yet available from Luna's current backend foundation, so no business mutation is wired.
 - No public deployment or production security audit. Local state is mutable example data, never trusted financial authority.

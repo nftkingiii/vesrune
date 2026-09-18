@@ -70,7 +70,7 @@ All numbers above describe the original seed. Actions persist, so your preview m
 - Capital exclusion is a spending policy, **not a principal guarantee**. Earn protocols can lose funds or delay withdrawals.
 - No APY is advertised, and the curve is explicitly illustrative.
 - Pollar Earn pool visibility in a dashboard is not execution proof. Testnet support must be proven by actual deposit/read-back/withdrawal on the selected asset and wallet type.
-- Ordinary wallet transfers are not called x402. Autonomous signing is not assumed.
+- The route agent service can use Pollar's x402 adapter on Stellar testnet: the user authorizes a small service payment through Pollar, while the principal route settlement remains a separate transfer that Vesrune verifies against Horizon. Autonomous signing is not assumed.
 - On/off ramps, mainnet, guaranteed returns, autonomous discretionary spending, and real-money deployment are outside this handoff.
 
 No production deployment or hackathon submission has been made. Full-testnet prize eligibility and presentation requirements still need organizer confirmation.

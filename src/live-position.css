@@ -1,0 +1,11 @@
+.live-position-list{display:grid;gap:10px;margin-top:24px}
+.live-position{display:grid;grid-template-columns:1fr auto;gap:8px 20px;background:#151019;border:1px solid #42304e;border-radius:11px;padding:17px}
+.live-position>div:first-child{display:grid;gap:5px}
+.live-position strong{font-size:13px}
+.live-position span{color:var(--muted);font-size:10px}
+.live-position-value{text-align:right}
+.live-position-value strong{font:24px 'Manrope';letter-spacing:-.5px}
+.live-position-value span{margin-left:5px}
+.live-position-meta{grid-column:1/-1;display:flex;gap:22px;border-top:1px solid var(--line);padding-top:11px}
+.live-position-meta strong{color:#dfc9ee;font-size:11px}
+@media(max-width:560px){.live-position{gap:8px 12px;padding:14px}.live-position-value strong{font-size:20px}.live-position-meta{gap:12px;flex-wrap:wrap}}

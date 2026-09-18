@@ -1,0 +1,25 @@
+# Vesrune Local Routes backend extension
+
+Work in C:\Users\HP\Documents\Codex\2026-09-16\quick-one-https-www-boundlessfi-xyz. Astra owns frontend and shared/localRoutes.ts. Luna owns server/** and docs/LUNA_LOCAL_ROUTES_HANDOFF.md. Preserve existing environment credentials and CORS fixes. Never print secrets.
+
+## Product and evidence boundaries
+Build a durable Nigeria NGN bank-transfer sandbox/manual operator corridor into a Pollar Stellar testnet USDC wallet. Organizer permits a documented semi-manual African leg; Pollar provides the Bolivia mainnet leg, which we MUST mock for this hackathon. No real bank collection, mainnet ramp calls, fabricated transaction proofs, or fake yield. Frontend initially runs an explicitly separate local rehearsal and will be wired after handoff.
+
+Use shared/localRoutes.ts as the response DTO. Purpose wallet / earn / bolivia records intent: settlement creates idle capital only. Earn needs a separate explicit confirmed deposit; incoming capital never becomes spendable realized earnings. Do not implement speculative multiple pools or auto-rebalancing in this extension.
+
+## API v1
+GET /api/local-routes/capabilities returns sandbox:true, network:testnet, supported corridor NGN bank transfer -> USDC, fixed demo rate/fee, configured readiness and reasons.
+POST /api/local-routes/quotes {sourceAmount,purpose} returns LocalQuote. Server derives all amounts with integer arithmetic, NGN two decimals, USDC seven. Fixed SANDBOX rate 1500 NGN/USDC, fee 1 percent of NGN gross; minimum 1500 maximum 1500000 NGN; expire after 10 minutes. Label rates illustrative, never market quotes.
+POST /api/local-routes {quoteId} requires Idempotency-Key, returns LocalRoute. Never accept a client amount or arbitrary wallet as authority. Bind authenticated owner and verified testnet wallet server-side. Lock quote against duplicate use.
+GET /api/local-routes and GET /api/local-routes/:id owner-scoped.
+POST /api/local-routes/:id/evidence {reference,expectedVersion} moves awaiting_funding -> under_review. Sandbox reference only, do not collect actual bank details or upload sensitive documents.
+POST /api/local-routes/:id/review {decision:approve|reject,reason,expectedVersion} authenticated operator only. Approve -> awaiting_settlement, reject -> rejected. Never credit balances from evidence or operator approval.
+POST /api/local-routes/:id/settlement {transactionHash,expectedVersion} operator only; verify successful Stellar TESTNET transaction from configured trusted RPC/Horizon: exact USDC issuer, destination bound owner wallet, amount and operation; finality; unique transaction+operation; reject replay, wrong network/asset/recipient/amount. Fail closed when configuration/proof absent. If no execution infrastructure exists, accept independently verified operator-sent testnet transfers; document steps. Never silently simulate settlement.
+POST /api/local-routes/:id/simulate-payout {expectedVersion} only for purpose bolivia and settled route, -> payout_simulated with explicit simulated receipt (no bank receipt or transaction hash). No actual BOB provider calls. Any BOB conversion must be clearly illustrative and not a market quote.
+POST /api/local-routes/:id/cancel {expectedVersion} only before evidence; later financial disputes require operator-reviewed refund_required, never auto-mark refunded.
+
+## Persistence and security
+Add migrations and repository/service layers; durable quotes/routes/events/idempotency keys with owner scope, version check and transactions. Reject expired quotes, invalid decimal/scientific/negative/overflow values, duplicate transitions, cross-owner reads. Restrict operator role, do not trust request role/owner fields. Existing auth may be incomplete: do not fake verified Pollar identity. Supply an explicit loopback-only sandbox identity mode gated by opt-in server config, isolated storage namespace and UI capability signal; never enable it for deployed/live operation. Otherwise return actionable auth-unavailable errors. Document auth blocker precisely. Rate-limit mutation endpoints, cap body size, strict origin allowlist/OPTIONS, credentials safe, CSRF protection appropriate to cookie auth. Error envelope {error:{code,message}}; do not leak secrets. No changes to configured secrets.
+
+## Required verification and delivery
+Implement functioning APIs and persistence, not just health stubs. Tests: quote math/expiry, invalid input, idempotency replay/conflict, owner/operator authorization, version conflict/concurrent review, evidence does not mint funds, principal exclusion, wrong asset/network/destination settlement, replay prevention, no fabricated proof, BOB simulation gating. Run backend tests/typecheck/build and document commands/results. Include endpoint request/response examples, migrations/env names (no values), actual auth/session integration status, and precise frontend wiring instructions in docs/LUNA_LOCAL_ROUTES_HANDOFF.md. Keep tests and fixtures isolated from user DB. Do not deploy or transfer funds. Report completion to this thread.

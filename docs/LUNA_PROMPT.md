@@ -1,0 +1,11 @@
+# Give this to Luna
+
+Build the backend for **Vesrune**, a Stellar-testnet yield-funded work account using Pollar. Only confirmed, reconciled realized earnings can fund owner-approved tasks; deposited capital is never task budget. Astra has built the complete local frontend preview and will wire it after you finish.
+
+First read `README.md`, `docs/LUNA_BACKEND_PLAN.md`, `shared/contracts.ts`, `shared/api.ts`, and `src/domain.test.ts`. Implement the ordered milestones and acceptance tests in the plan. Verify current Pollar package types and official documentation before coding integration methods. Start with the deposit → position read-back → withdrawal capability spike. If the selected testnet pool/wallet/asset cannot execute, document the exact blocker and keep live capability disabled; never substitute fake yield or fabricate a hash.
+
+Own `server/**`, backend migrations/tests/config, and `docs/BACKEND_HANDOFF.md`. Do not redesign or wire `src/App.tsx`, `src/styles.css`, or `src/gateway.ts`. Treat `shared/api.ts` as the proposed wire boundary; propose necessary additions in your handoff instead of silently changing the frontend contract. Keep backend dependencies and lockfile isolated in `server/` and keep root frontend checks passing.
+
+Use PostgreSQL transactional reservations and an immutable balanced ledger, exact 7-decimal asset handling, verified owner sessions, idempotency, durable transaction recovery, server-side spend policy, explicit network/asset allowlists, and safe provider execution. Agent output is data, not payment authority. All wallet writes require the user's exact testnet authorization and appropriate wallet signing; do not infer it from having an API key. No mainnet, on/off ramps, x402 claims, autonomous signing assumption, dashboard mutations, public deployment, or third-party account creation without further direction.
+
+Deliver tested code, reproducible setup, environment variable names (never values), endpoint examples, migration commands, a factual proof matrix, remaining blockers, and a precise Astra integration handoff. Separate fixtures, mocked tests, real RPC reads, and user-wallet transaction evidence. Stop and report when the backend is ready for Astra to integrate.

@@ -1,0 +1,2 @@
+import {describe,expect,it} from 'vitest'; import {formatAmount,parseAmount} from '../src/decimal.js';
+describe('decimal amounts',()=>{it('round trips exact seven decimals',()=>{expect(formatAmount(parseAmount('3.5000000'))).toBe('3.5');expect(formatAmount(parseAmount('0.0000001'))).toBe('0.0000001');});it('rejects unsafe forms',()=>{for(const x of ['-1','1e3','0.00000001','1.2.3',1])expect(()=>parseAmount(x)).toThrow();});});

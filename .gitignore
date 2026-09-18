@@ -1,0 +1,14 @@
+node_modules/
+dist/
+videos/
+server/dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+!.env.local.example
+*.sqlite
+*.sqlite3
+PROJECT_STATE.md
+HACK_EVENT_GATE.json
+.local/

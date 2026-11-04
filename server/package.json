@@ -13,6 +13,6 @@
     "migrate": "node dist/src/migrate.js"
   },
   "packageManager": "npm@11.6.2",
-  "dependencies": { "pg": "^8.16.3", "zod": "^4.1.12" },
+  "dependencies": { "pg": "^8.16.3", "zod": "^4.6.6" },
   "devDependencies": { "@types/node": "^24.0.0", "@types/pg": "^8.15.6", "typescript": "^5.9.3", "vitest": "^4.1.0" }
 }
